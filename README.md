@@ -1,5 +1,10 @@
 # Multi Window Output
 
+Multi Window Ouput allows you to have multiple output screens in the same terminal screen
+
+https://user-images.githubusercontent.com/57689554/214165133-b4a75a3e-1224-4f5b-a76c-e5bacfbd2e48.mp4
+
+
 
 # TODO 
 - Handle special characters when passing to buffer;
