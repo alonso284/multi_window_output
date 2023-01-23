@@ -14,10 +14,12 @@ mod tests {
     }
 }
 
+#[derive(Debug)]
 pub enum Priority {
     Vertical, Horizontal,
 }
 
+#[derive(Debug)]
 pub struct Window{
     id: usize,
     pub buffer: Buffer,

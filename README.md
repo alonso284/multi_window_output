@@ -1,5 +1,13 @@
 # Multi Window Output
 
+
+# TODO 
+- Handle special characters when passing to buffer;
+- Make screen buffer an owned variable
+- Handle when screen is too small
+- Documentation
+- Optimizations
+
 What do I want it to do?
 - The user should be able to use it as a normal println!() macros, by doing something like `windows.println(format!("Some text")`
 - Allwo the user to have multiple screens and change them from the terminal executing of from the program automatically with something like `screen1.display()` or typing `switch screen1`

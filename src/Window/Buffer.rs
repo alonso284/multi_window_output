@@ -1,4 +1,4 @@
-const BUFFER_SIZE:usize = 10;
+const BUFFER_SIZE:usize = 64;
 const INIT:Option<String> = None;
 
 #[cfg(test)]
@@ -19,6 +19,7 @@ mod buffer_tests {
     }
 }
 
+#[derive(Debug)]
 pub struct Buffer {
     queue: [Option<String>;BUFFER_SIZE],
     start_pointer: usize,
