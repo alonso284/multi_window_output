@@ -1,5 +1,8 @@
 mod window;
 use window::{Priority, Window};
+use termion::screen::IntoAlternateScreen;
+use termion::color;
+use termion::terminal_size;
 
 const MAX_WIN:usize = 30;
 const INIT:Option<Window> = None;
@@ -9,7 +12,7 @@ mod screen_tests {
     use super::*;
     #[test]
     fn create_screen(){
-        let mut screen = Screen::new();
+        let mut screen = Screen::new(&format!("Temp"));
         let id_1 = screen.append_left_child(0).unwrap();
         let id_2 = screen.append_down_child(0).unwrap();
         screen.println(id_1, &format!("Hello World")).unwrap();
@@ -17,19 +20,23 @@ mod screen_tests {
     }
 }
 
-pub struct Screen {
+pub struct Screen{
+    name: String,
     windows: [Option<Window>;MAX_WIN],
     count: usize,
 }
 
 impl Screen {
-    pub fn new() -> Screen {
-        let mut screen = Screen { windows: [INIT;MAX_WIN], count: 1, };
+    pub fn new(name: &String) -> Screen {
+        let mut screen = Screen { windows: [INIT;MAX_WIN], count: 1, name: String::clone(name), };
         screen.windows[0] = Some(Window::new(0));
+        screen.println(0, &format!("Succesfully initiated screen"));
         screen
     }
     fn load(&self){
-        println!("Starting Load");
+        let mut _scr = std::io::stdout().into_alternate_screen().unwrap();
+        let (width, height) = terminal_size().unwrap();
+        println!("{}Screen: {}{}{}", color::Bg(color::Green), self.name, " ".repeat((width - 8 - self.name.len() as u16) as usize), color::Bg(color::Reset));
         self.output(0);
     }
     fn output(&self, id:usize) {
