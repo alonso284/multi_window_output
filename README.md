@@ -2,9 +2,9 @@
 
 
 # TODO 
-- Handle special characters when passing to buffer;
-- Make screen buffer an owned variable
+- Handle special characters when passing to buffer
 - Handle when screen is too small
+- Allow the pass of a predefined setup
 - Documentation
 - Optimizations
 
@@ -37,3 +37,6 @@ src
 			Window.rs
 			Buffer
 				Buffer.rs
+
+
+
