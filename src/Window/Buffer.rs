@@ -1,11 +1,11 @@
-const BUFFER_SIZE:usize = 64;
-const INIT:Option<String> = None;
+const BUFFER_SIZE: usize = 64;
+const INIT: Option<String> = None;
 
 #[cfg(test)]
 mod buffer_tests {
     use super::*;
     #[test]
-    fn print_buffer(){
+    fn print_buffer() {
         let mut buffer = Buffer::new();
 
         for _ in 0..1026 {
@@ -21,7 +21,7 @@ mod buffer_tests {
 
 #[derive(Debug)]
 pub struct Buffer {
-    queue: [Option<String>;BUFFER_SIZE],
+    queue: [Option<String>; BUFFER_SIZE],
     start_pointer: usize,
     end_pointer: usize,
 }
@@ -36,24 +36,24 @@ impl Buffer {
     // Returna new empty buffer
     pub fn new() -> Buffer {
         Buffer {
-            queue: [INIT;BUFFER_SIZE],
+            queue: [INIT; BUFFER_SIZE],
             start_pointer: 0,
             end_pointer: 0,
         }
     }
     // Append to last written line
-    pub fn append(&mut self, suffix: &String){
+    pub fn append(&mut self, suffix: &str) {
         match &mut self.queue[self.end_pointer] {
             Some(line) => line.push_str(suffix),
-            None => self.queue[self.end_pointer] = Some(String::clone(suffix)),
+            None => self.queue[self.end_pointer] = Some(suffix.to_string().to_owned()),
         }
     }
     // Go to next line
-    pub fn flush(&mut self){
-        self.end_pointer = (self.end_pointer+1) % BUFFER_SIZE;
+    pub fn flush(&mut self) {
+        self.end_pointer = (self.end_pointer + 1) % BUFFER_SIZE;
         if self.start_pointer == self.end_pointer {
             self.queue[self.end_pointer] = None;
-            self.start_pointer = (self.start_pointer+1) % BUFFER_SIZE;
+            self.start_pointer = (self.start_pointer + 1) % BUFFER_SIZE;
         }
     }
     // Return buffer iterator
@@ -66,15 +66,15 @@ impl Buffer {
     }
 }
 
-impl<'a> Iterator for BufferIterator<'a>{
+impl<'a> Iterator for BufferIterator<'a> {
     type Item = &'a Option<String>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start_pointer != self.end_pointer {
             let borrow = &self.queue_pointer[self.start_pointer];
-            self.start_pointer = (self.start_pointer+1) % BUFFER_SIZE;
+            self.start_pointer = (self.start_pointer + 1) % BUFFER_SIZE;
             Some(borrow)
-        } else{
+        } else {
             None
         }
     }
