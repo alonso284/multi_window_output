@@ -1,9 +1,10 @@
 [package]
-name = "multi_window_output"
+name = "multi-window-output"
 version = "0.1.0"
 edition = "2021"
+description = "Tool for allowing multiple output windows in the same screen."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-termion = "*"
+termion = "2.0.1"

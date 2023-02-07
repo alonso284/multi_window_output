@@ -45,7 +45,7 @@ impl Buffer {
     pub fn append(&mut self, suffix: &str) {
         match &mut self.queue[self.end_pointer] {
             Some(line) => line.push_str(suffix),
-            None => self.queue[self.end_pointer] = Some(suffix.to_string().to_owned()),
+            None => self.queue[self.end_pointer] = Some(suffix.to_string()),
         }
     }
     // Go to next line

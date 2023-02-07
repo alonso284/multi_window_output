@@ -12,28 +12,42 @@ fn main() {
     sender.println(0, "Sending from bridge").expect("Problems");
 
     let other_bridge = Bridge::clone(&sender);
-    let t1 = std::thread::spawn( move || {
-        other_bridge.println(4, "inside this one").expect("Problems");
+    let t1 = std::thread::spawn(move || {
+        other_bridge
+            .println(4, "inside this one")
+            .expect("Problems");
     });
     //
     //
     let other_bridge = Bridge::clone(&sender);
-    let t2 = std::thread::spawn( move || {
-        other_bridge.println(2, "Hello World from one").expect("Problems");
-        other_bridge.println(3, "Hello World from one").expect("Problems");
-        other_bridge.println(4, "Hello World from one").expect("Problems");
+    let t2 = std::thread::spawn(move || {
+        other_bridge
+            .println(2, "Hello World from one")
+            .expect("Problems");
+        other_bridge
+            .println(3, "Hello World from one")
+            .expect("Problems");
+        other_bridge
+            .println(4, "Hello World from one")
+            .expect("Problems");
     });
 
-
-
-    sender.println(0, "tttSending from bridge").expect("Problems");
-    sender.println(3, "tttSending from bridge").expect("Problems");
-    sender.println(1, "tttSending from bridge").expect("Problems");
+    sender
+        .println(0, "tttSending from bridge")
+        .expect("Problems");
+    sender
+        .println(3, "tttSending from bridge")
+        .expect("Problems");
+    sender
+        .println(1, "tttSending from bridge")
+        .expect("Problems");
     // t1.join().unwrap();
     // t2.join().unwrap();
     //
 
-    sender.println(0, "qqqSending from bridge").expect("Problems");
+    sender
+        .println(0, "qqqSending from bridge")
+        .expect("Problems");
     t1.join().unwrap();
     t2.join().unwrap();
     std::thread::sleep(std::time::Duration::new(5, 0));
