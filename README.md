@@ -4,7 +4,7 @@ Multi Window Output allows you to have multiple output screens in the same termi
 
 ## Screen
 
-Start a new `Screen` with `Screen::new(screen_name, window_name`, which will create a new screen with name `screen_name` with a single window with name `window_name`. The name of the `Screen` will be displayed at the top of the terminal. Each window's name will be displayed at the bottom of it. The `id` of the default window is `0`.
+Start a new `Screen` with `Screen::new(screen_name, window_name)`, which will create a new screen with name `screen_name` with a single window with name `window_name`. The name of the `Screen` will be displayed at the top of the terminal. Each window's name will be displayed at the bottom of it. The `id` of the default window is `0`.
 
 ```rust
 let mut screen = Screen::new("My Screen", "My Window");
@@ -30,7 +30,7 @@ screen.flush(new_window).unwrap();
 ```
 ## Bridge
 
-`Bridge` allows you to call the content functions of `Screen` from different locations. This is specially usefull when printint things from different threads. The only downside to using bridge, is that you can't append new children to the `Screen` you pass to `Bridge::new(&screen)`.
+`Bridge` allows you to call the content functions of `Screen` from different locations. This is specially usefull when printing things from different threads. The only downside to using bridge, is that you can't append new children to the `Screen` you pass to `Bridge::new(&screen)`.
 
 To create a bridge.
 ```rust
@@ -49,7 +49,7 @@ bridge.println(new_window, "New Line").unwrap();
 other_bridge.println(new_window, "New New Line").unwrap();
 ```
 
-Ideally, when you finish using a screen, run `bridge.kill()` to end the screening proccess.
+Ideally, when you finish using a screen, run `bridge.kill()` to end the screening process.
 
 https://user-images.githubusercontent.com/57689554/214165855-e4569f2d-499e-471d-8d88-159cab0fe3a0.mp4
 
