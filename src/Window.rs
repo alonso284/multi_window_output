@@ -23,7 +23,7 @@ pub enum Priority {
 #[derive(Debug)]
 pub struct Window {
     id: usize,
-    name: String,
+    pub name: String,
     pub buffer: Buffer,
     pub left_child: Option<usize>,
     pub down_child: Option<usize>,
@@ -31,10 +31,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(id: usize, name: &str) -> Window {
+    pub fn new(id: usize) -> Window {
         Window {
             id,
-            name: name.to_string(),
+            name: format!("Window {}", id),
             buffer: Buffer::new(),
             left_child: None,
             down_child: None,

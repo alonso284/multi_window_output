@@ -19,7 +19,7 @@ mod screen_tests {
     use super::*;
     #[test]
     fn create_screen() {
-        let mut screen = Screen::new("Temp");
+        let mut screen = Screen::new();
         let id_1 = screen.append_left_child(0).unwrap();
         let id_2 = screen.append_down_child(0).unwrap();
         screen.println(id_1, "Hello World").unwrap();
@@ -27,9 +27,34 @@ mod screen_tests {
     }
     #[test]
     fn bridge_creation() {
-        let mut screen = Screen::new("Screen using bridge");
-        let mut bridge = Bridge::new(screen);
-        bridge.println(0, "Hello World");
+        let mut screen = Screen::name_screen("My New Screen");
+        screen.set_name("Change the name");
+        screen.set_window_name(0, "My only window").unwrap();
+        let bridge = Bridge::new(screen);
+        bridge.println(0, "Hello World").unwrap();
+    }
+    #[test]
+    fn not_found(){
+        let mut screen = Screen::new();
+        let err = screen.flush(3);
+        assert_eq!(Err(std::io::ErrorKind::NotFound), err);
+    }
+    #[test]
+    fn alredy_exists(){
+        let mut screen = Screen::new();
+        screen.append_left_child(0).unwrap();
+        let err = screen.append_left_child(0);
+        assert_eq!(Err(std::io::ErrorKind::AlreadyExists), err);
+    }
+    #[test]
+    fn out_of_memory(){
+        let mut screen = Screen::new();
+        let mut id:usize = 0;
+        for _ in 0..(MAX_WIN - 1) {
+            id = screen.append_left_child(id).unwrap();
+        }
+        let err = screen.append_left_child(0);
+        assert_eq!(Err(std::io::ErrorKind::OutOfMemory), err);
     }
 }
 
@@ -45,16 +70,32 @@ pub struct Screen {
 
 impl Screen {
     /// Create a new `Screen` with one window with `id = 0`.
-    pub fn new(name_screen: &str, name_window: &str) -> Screen {
+    pub fn new() -> Screen {
         let mut screen = Screen {
             windows: [INIT; MAX_WIN],
             count: 1,
-            name: name_screen.to_string(),
+            name: "Screen".to_string(),
             buffer: [[(b' ', false); MAX_WIDTH]; MAX_HEIGHT],
         };
-        screen.windows[0] = Some(Window::new(0, name_window));
+        screen.windows[0] = Some(Window::new(0));
         screen.load();
         screen
+    }
+    /// Create a new `Screen` with name
+    pub fn name_screen(name: &str) -> Screen {
+        let mut screen = Screen::new();
+        screen.set_name(name);
+        screen
+    }
+    /// Set name to `Screen`
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
+    }
+    /// Set name to window
+    pub fn set_window_name(&mut self, id: usize, name: &str) -> Result<(), std::io::ErrorKind> {
+        self.validate_id(id)?;
+        self.windows[id].as_mut().unwrap().name = name.to_string();
+        Ok(())
     }
     fn load(&mut self) {
         let mut scr = std::io::stdout().into_alternate_screen().unwrap();
@@ -182,33 +223,29 @@ impl Screen {
         }
     }
     // Validate existance of window
-    fn validate_id(&self, id: usize) -> Result<(), String> {
+    fn validate_id(&self, id: usize) -> Result<(), std::io::ErrorKind> {
         // Invalid ID
-        if id >= MAX_WIN {
-            return Err("ID of window does not exist".to_string());
-        }
-        // Child does not exist
-        if self.windows[id].is_none() {
-            return Err("Window does not exist".to_string());
+        if id >= MAX_WIN || self.windows[id].is_none(){
+            return Err(std::io::ErrorKind::NotFound);
         }
         Ok(())
     }
     /// Splits window with `id` into a left and right window. If successfull, the left window keeps the `id` you
     /// passed, and the function returns `Ok(id)`, with the `id` of the right window. If failed, returns
-    /// `Err(String)`.
-    pub fn append_left_child(&mut self, id: usize, name: &str) -> Result<usize, String> {
-        self.append_child(id, name, Priority::Vertical)
+    /// `Err(std::io::ErrorKind)`.
+    pub fn append_left_child(&mut self, id: usize) -> Result<usize, std::io::ErrorKind> {
+        self.append_child(id, Priority::Vertical)
     }
     /// Splits window with `id` into an up and down window. If successfull, the up window keeps the `id` you
     /// passed, and the function returns `Ok(id)`, with the `id` of the down window. If failed, returns
-    /// `Err(String)`.
-    pub fn append_down_child(&mut self, id: usize, name: &str) -> Result<usize, String> {
-        self.append_child(id, name, Priority::Horizontal)
+    /// `Err(std::io::ErrorKind)`.
+    pub fn append_down_child(&mut self, id: usize) -> Result<usize, std::io::ErrorKind> {
+        self.append_child(id, Priority::Horizontal)
     }
-    fn append_child(&mut self, id: usize, name: &str, priority: Priority) -> Result<usize, String> {
+    fn append_child(&mut self, id: usize, priority: Priority) -> Result<usize, std::io::ErrorKind> {
         // Not enough space to add new window
         if self.count >= MAX_WIN {
-            return Err("Not enough space to add new window".to_string());
+            return Err(std::io::ErrorKind::OutOfMemory);
         }
         // Validate if child exits
         self.validate_id(id)?;
@@ -218,11 +255,11 @@ impl Screen {
             Priority::Vertical => self.windows[id].as_ref().unwrap().left_child,
             Priority::Horizontal => self.windows[id].as_ref().unwrap().down_child,
         };
-        if let Some(id) = child {
-            return Err(format!("Child already exists at {}", id));
+        if child.is_some() {
+            return Err(std::io::ErrorKind::AlreadyExists);
         }
 
-        self.windows[self.count] = Some(Window::new(self.count, name));
+        self.windows[self.count] = Some(Window::new(self.count));
         match priority {
             Priority::Vertical => self.windows[id].as_mut().unwrap().left_child = Some(self.count),
             Priority::Horizontal => {
@@ -235,22 +272,22 @@ impl Screen {
         self.count += 1;
         Ok(self.count - 1)
     }
-    /// Print a new `line` in window with `id`. Returns `()` if successful, `Err(String)` if not.
-    pub fn println(&mut self, id: usize, line: &str) -> Result<(), String> {
+    /// Print a new `line` in window with `id`. Returns `()` if successful, `Err(std::io::ErrorKind)` if not.
+    pub fn println(&mut self, id: usize, line: &str) -> Result<(), std::io::ErrorKind> {
         // Validate if child exits
         self.validate_id(id)?;
         self.print(id, line).unwrap();
         self.flush(id)
     }
-    /// Print `line` in window with `id`, but do not flush. Returns `()` if successful, `Err(String)` if not.
-    pub fn print(&mut self, id: usize, line: &str) -> Result<(), String> {
+    /// Print `line` in window with `id`, but do not flush. Returns `()` if successful, `Err(std::io::ErrorKind)` if not.
+    pub fn print(&mut self, id: usize, line: &str) -> Result<(), std::io::ErrorKind> {
         // Validate if child exits
         self.validate_id(id)?;
         self.windows[id].as_mut().unwrap().print(line);
         Ok(())
     }
-    /// Flush window with `id`. Returns `()` if successful, `Err(String)` if not.
-    pub fn flush(&mut self, id: usize) -> Result<(), String> {
+    /// Flush window with `id`. Returns `()` if successful, `Err(std::io::ErrorKind)` if not.
+    pub fn flush(&mut self, id: usize) -> Result<(), std::io::ErrorKind> {
         // Validate if child exits
         self.validate_id(id)?;
         self.windows[id].as_mut().unwrap().flush();
@@ -259,6 +296,11 @@ impl Screen {
     }
 }
 
+impl Default for Screen {
+    fn default() -> Self {
+        Screen::new()
+    }
+}
 enum Cmds {
     Print,
     Flush,
@@ -308,33 +350,33 @@ impl Bridge {
         });
         Bridge { bridge: tx, hash }
     }
-    /// Print a new `line` in window with `id`. Returns `()` if successful, `Err(String)` if not.
-    pub fn println(&self, id: usize, msg: &str) -> Result<(), String> {
+    /// Print a new `line` in window with `id`. Returns `()` if successful, `Err(std::io::ErrorKind)` if not.
+    pub fn println(&self, id: usize, msg: &str) -> Result<(), std::io::ErrorKind> {
         self.validate_id(id)?;
         self.bridge
             .send((Cmds::Println, id, msg.to_string()))
             .unwrap();
         Ok(())
     }
-    /// Print `line` in window with `id`, but do not flush. Returns `()` if successful, `Err(String)` if not.
-    pub fn print(&self, id: usize, msg: &str) -> Result<(), String> {
+    /// Print `line` in window with `id`, but do not flush. Returns `()` if successful, `Err(std::io::ErrorKind)` if not.
+    pub fn print(&self, id: usize, msg: &str) -> Result<(), std::io::ErrorKind> {
         self.validate_id(id)?;
         self.bridge
             .send((Cmds::Print, id, msg.to_string()))
             .unwrap();
         Ok(())
     }
-    /// Flush window with `id`. Returns `()` if successful, `Err(String)` if not.
-    pub fn flush(&self, id: usize) -> Result<(), String> {
+    /// Flush window with `id`. Returns `()` if successful, `Err(std::io::ErrorKind)` if not.
+    pub fn flush(&self, id: usize) -> Result<(), std::io::ErrorKind> {
         self.validate_id(id)?;
         self.bridge.send((Cmds::Flush, id, "".to_string())).unwrap();
         Ok(())
     }
-    fn validate_id(&self, id: usize) -> Result<(), String> {
+    fn validate_id(&self, id: usize) -> Result<(), std::io::ErrorKind> {
         if self.hash.contains(&id) {
             return Ok(());
         }
-        Err("ID does not exist".to_string())
+        Err(std::io::ErrorKind::NotFound)
     }
     /// Kills `Bridge`'s communication, and terminates the `Screen` screening process and deletes it.
     pub fn kill(&self) {

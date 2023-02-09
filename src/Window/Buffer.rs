@@ -41,11 +41,23 @@ impl Buffer {
             end_pointer: 0,
         }
     }
+    fn proccess_str(raw: &str) -> String {
+        let mut pro = String::new();
+        for letter in raw.chars() {
+            match letter {
+                '\n' | '\0' => {},
+                '\t' => { pro.push_str("    "); },
+                '\r' => { pro = String::new(); },
+                letter => { pro.push(letter); },
+            };
+        }
+        pro
+    }
     // Append to last written line
     pub fn append(&mut self, suffix: &str) {
         match &mut self.queue[self.end_pointer] {
-            Some(line) => line.push_str(suffix),
-            None => self.queue[self.end_pointer] = Some(suffix.to_string()),
+            Some(line) => line.push_str(&Self::proccess_str(suffix)),
+            None => self.queue[self.end_pointer] = Some(Self::proccess_str(suffix)),
         }
     }
     // Go to next line
