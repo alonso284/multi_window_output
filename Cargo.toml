@@ -1,6 +1,6 @@
 [package]
 name = "multi-window-output"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "Tool for allowing multiple output windows in the same screen."
 license = "MIT"
