@@ -52,3 +52,14 @@ other_bridge.println(new_window, "New New Line").unwrap();
 Ideally, when you finish using a screen, run `bridge.kill()` to end the screening process.
 
 https://user-images.githubusercontent.com/57689554/214165855-e4569f2d-499e-471d-8d88-159cab0fe3a0.mp4
+
+## TODO
+- Finish thread counter for optimization. Every time Bridge::clone() is called, aument the conter in one. for Bridge::drop(), dercrease counter by one. One the counter hits zero, end the thread.
+- Experiment with colors codes
+- Make size of screen be able to divide into thirds and other types
+- Make other initializers (append x ammount of windows.
+
+
+The plan
+- al entrar por el primero va a ir al derecho y se va a pasar cunatos previos hay,
+- 

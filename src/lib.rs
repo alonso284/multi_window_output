@@ -3,6 +3,8 @@
 //! `Screen::println()`, the current terminal screen will be replaced with the output of the calling screen.
 
 mod window;
+mod colors;
+pub use colors::Color;
 use std::io::Write;
 use termion::color;
 use termion::screen::IntoAlternateScreen;
@@ -56,16 +58,75 @@ mod screen_tests {
         let err = screen.append_left_child(0);
         assert_eq!(Err(std::io::ErrorKind::OutOfMemory), err);
     }
+    #[test]
+    fn change_colors(){
+        let mut screen = Screen::new();
+        screen.set_screen_color(Color::Blue);
+        screen.set_window_color(0, Color::Blue).unwrap();
+    }
+    #[test]
+    fn sample_code(){
+        // Create a new screen. It will create a `Screen` with single window with id = 0.
+        let mut screen = Screen::new();
+
+        // Create new window either to the left of below the already create windows.
+        let first_window_id     = 0;
+        let second_window_id    = screen.append_left_child(first_window_id).unwrap();
+        let third_window_id     = screen.append_down_child(first_window_id).unwrap();
+        let fourth_window_id    = screen.append_down_child(second_window_id).unwrap();
+
+        // Set the Screen's and windows' names.
+        screen.set_name("My new Screen");
+        screen.set_window_name(third_window_id, "This is the third window").unwrap();
+
+        // Change the Screen's and windows' colors.
+        screen.set_screen_color(Color::LightBlack);
+        screen.set_window_color(first_window_id, Color::Blue).unwrap();
+        screen.set_window_color(fourth_window_id, Color::Yellow).unwrap();
+        
+        // Print things on screen.
+        screen.println(third_window_id, "Hello, World!").unwrap();
+        screen.print(second_window_id, "Hello, multi_window_output!").unwrap();
+    }
 }
 
 #[derive(Debug)]
 /// A `Screen` contains multiple windows. When initiated, a `Screen` only contains one window with
 /// `id = 0`.
+///
+/// ```ignore
+/// // This is a sample program. This code appears as not tested since the cargo runner has some
+/// // problems with the termion crate. However, you may see this code tested inside src/lib.rs
+/// use multi_window_output::{Screen, Bridge, Color};
+///
+/// // Create a new screen. It will create a `Screen` with single window with id = 0.
+/// let mut screen = Screen::new();
+///
+/// // Create new window either to the left of below the already create windows.
+/// let first_window_id     = 0;
+/// let second_window_id    = screen.append_left_child(first_window_id).unwrap();
+/// let third_window_id     = screen.append_down_child(first_window_id).unwrap();
+/// let fourth_window_id    = screen.append_down_child(second_window_id).unwrap();
+///
+/// // Set the Screen's and windows' names.
+/// screen.set_name("My new Screen");
+/// screen.set_window_name(third_window_id, "This is the third window").unwrap();
+///
+/// // Change the Screen's and windows' colors.
+/// screen.set_screen_color(Color::LightBlack);
+/// screen.set_window_color(first_window_id, Color::Blue).unwrap();
+/// screen.set_window_color(fourth_window_id, Color::Yellow).unwrap();
+///
+/// // Print things on screen.
+/// screen.println(third_window_id, "Hello, World!").unwrap();
+/// screen.print(second_window_id, "Hello, multi_window_output!").unwrap();
+/// ```
 pub struct Screen {
     name: String,
+    color: Color,
     windows: [Option<Window>; MAX_WIN],
     count: usize,
-    buffer: [[(u8, bool); MAX_WIDTH]; MAX_HEIGHT],
+    buffer: [[(u8, Color); MAX_WIDTH]; MAX_HEIGHT],
 }
 
 impl Screen {
@@ -73,9 +134,10 @@ impl Screen {
     pub fn new() -> Screen {
         let mut screen = Screen {
             windows: [INIT; MAX_WIN],
+            color: Color::Green,
             count: 1,
             name: "Screen".to_string(),
-            buffer: [[(b' ', false); MAX_WIDTH]; MAX_HEIGHT],
+            buffer: [[(b' ', Color::Null); MAX_WIDTH]; MAX_HEIGHT],
         };
         screen.windows[0] = Some(Window::new(0));
         screen.load();
@@ -103,7 +165,7 @@ impl Screen {
         let (width, height) = terminal_size().unwrap();
         println!(
             "{}Screen: {}{}{}",
-            color::Bg(color::Green),
+            colors::color_code(&self.color),
             self.name,
             " ".repeat((width - 8 - self.name.len() as u16) as usize),
             color::Bg(color::Reset)
@@ -115,10 +177,10 @@ impl Screen {
 
         for i in 0..height {
             for j in 0..width {
-                if self.buffer[i][j].1 {
+                if self.buffer[i][j].1 != Color::Null {
                     print!(
                         "{}{}{}",
-                        color::Bg(color::Green),
+                        colors::color_code(&self.buffer[i][j].1),
                         self.buffer[i][j].0 as char,
                         color::Bg(color::Reset)
                     );
@@ -192,14 +254,14 @@ impl Screen {
             let mut letter = line.chars();
             for j in start_width..end_width {
                 if j == end_width - 1 {
-                    self.buffer[i][j] = (b' ', true)
+                    self.buffer[i][j] = (b' ', self.windows[id].as_ref().unwrap().color)
                 } else {
                     self.buffer[i][j] = (
                         match letter.next() {
                             Some(l) => l as u8,
                             None => b' ',
                         },
-                        false,
+                        Color::Null,
                     )
                 };
             }
@@ -218,7 +280,7 @@ impl Screen {
                     Some(l) => l as u8,
                     None => b' ',
                 },
-                true,
+                self.windows[id].as_ref().unwrap().color
             );
         }
     }
@@ -294,6 +356,15 @@ impl Screen {
         self.load();
         Ok(())
     }
+    pub fn set_screen_color(&mut self, color: Color){
+        self.color = color;
+    }
+    pub fn set_window_color(&mut self, id: usize, color: Color) -> Result<(), std::io::ErrorKind> {
+        // Validate if child exists
+        self.validate_id(id)?;
+        self.windows[id].as_mut().unwrap().color = color;
+        Ok(())
+    }
 }
 
 impl Default for Screen {
@@ -306,6 +377,8 @@ enum Cmds {
     Flush,
     Println,
     Break,
+    Clone,
+    Drop,
 }
 
 /// `Bridge` is a complement for `Screen`. It allows you to print new lines in windows from different threads.
@@ -339,12 +412,20 @@ impl Bridge {
         let screen = Box::new(screen);
         std::thread::spawn(move || {
             let mut screen = *screen;
+            let mut bridge_count = 1;
             for msg in rx.iter() {
                 match msg.0 {
                     Cmds::Print => screen.print(msg.1, &msg.2).unwrap(),
                     Cmds::Flush => screen.flush(msg.1).unwrap(),
                     Cmds::Println => screen.println(msg.1, &msg.2).unwrap(),
                     Cmds::Break => break,
+                    Cmds::Clone => bridge_count += 1,
+                    Cmds::Drop => {
+                        bridge_count -= 1;
+                        if bridge_count == 0 {
+                            break;
+                        }
+                    },
                 };
             }
         });
@@ -388,9 +469,16 @@ impl std::clone::Clone for Bridge {
     fn clone(&self) -> Self {
         let bridge = self.bridge.clone();
         let hash = self.hash.clone();
+        self.bridge.send((Cmds::Clone, 0, "".to_string())).unwrap();
         Bridge { bridge, hash }
     }
     fn clone_from(&mut self, source: &Self) {
         *self = Bridge::clone(source);
+    }
+}
+
+impl std::ops::Drop for Bridge {
+    fn drop(&mut self){
+        self.bridge.send((Cmds::Drop, 0, "".to_string())).unwrap();
     }
 }

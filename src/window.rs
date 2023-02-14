@@ -1,5 +1,6 @@
 mod buffer;
 use buffer::Buffer;
+use crate::colors;
 
 #[cfg(test)]
 mod tests {
@@ -24,6 +25,7 @@ pub enum Priority {
 pub struct Window {
     id: usize,
     pub name: String,
+    pub color: colors::Color,
     pub buffer: Buffer,
     pub left_child: Option<usize>,
     pub down_child: Option<usize>,
@@ -35,6 +37,7 @@ impl Window {
         Window {
             id,
             name: format!("Window {}", id),
+            color: colors::Color::Green,
             buffer: Buffer::new(),
             left_child: None,
             down_child: None,
