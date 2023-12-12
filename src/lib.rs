@@ -11,8 +11,11 @@ use termion::screen::IntoAlternateScreen;
 use termion::terminal_size;
 use window::{Priority, Window};
 
+// Max amount of windows per screen
 const MAX_WIN: usize = 6;
+// Initial screen has no windows
 const INIT: Option<Window> = None;
+// Max value for screen dimensions
 const MAX_WIDTH: usize = 512;
 const MAX_HEIGHT: usize = 254;
 
@@ -126,11 +129,14 @@ pub struct Screen {
     color: Color,
     windows: [Option<Window>; MAX_WIN],
     count: usize,
+    // TODO move color value to window object
+    // TODO store Rc<Window> instead of and make hash map of Ids
     buffer: [[(u8, Color); MAX_WIDTH]; MAX_HEIGHT],
 }
 
 impl Screen {
     /// Create a new `Screen` with one window with `id = 0`.
+    // TODO allow user so set default color
     pub fn new() -> Screen {
         let mut screen = Screen {
             windows: [INIT; MAX_WIN],
@@ -139,6 +145,7 @@ impl Screen {
             name: "Screen".to_string(),
             buffer: [[(b' ', Color::Null); MAX_WIDTH]; MAX_HEIGHT],
         };
+        // Append new window
         screen.windows[0] = Some(Window::new(0));
         screen.load();
         screen
@@ -160,9 +167,13 @@ impl Screen {
         Ok(())
     }
     fn load(&mut self) {
+        // Initiate new screen
         let mut scr = std::io::stdout().into_alternate_screen().unwrap();
 
+        // Get dimensions of terminal
         let (width, height) = terminal_size().unwrap();
+
+        // Print screen name
         println!(
             "{}Screen: {}{}{}",
             colors::color_code(&self.color),
@@ -170,13 +181,18 @@ impl Screen {
             " ".repeat((width - 8 - self.name.len() as u16) as usize),
             color::Bg(color::Reset)
         );
+
+        // Decrease screen height by one and change type
         let width = width as usize;
         let height = height as usize - 1;
 
+        // Load window buffer content
         self.output(0, 0, width, 0, height);
 
+        // Output contents of buffer to terminal
         for i in 0..height {
             for j in 0..width {
+                // If the character has a bg, print it with ith
                 if self.buffer[i][j].1 != Color::Null {
                     print!(
                         "{}{}{}",
@@ -184,6 +200,7 @@ impl Screen {
                         self.buffer[i][j].0 as char,
                         color::Bg(color::Reset)
                     );
+                // Else, print it as a normal chacater
                 } else {
                     print!("{}", self.buffer[i][j].0 as char);
                 }
@@ -199,8 +216,10 @@ impl Screen {
         start_height: usize,
         mut end_height: usize,
     ) {
+        // DFS through screens
         match self.windows[id].as_ref().unwrap().priority {
             Some(Priority::Vertical) => {
+                // First go to left child
                 let mit = (start_width + end_width) / 2;
                 let left_id: usize = *self.windows[id]
                     .as_ref()
@@ -210,6 +229,7 @@ impl Screen {
                     .unwrap();
                 self.output(left_id, mit, end_width, start_height, end_height);
                 end_width = mit;
+                // If down child exists, output put that one
                 if let Some(down_id) = self.windows[id].as_ref().unwrap().down_child.as_ref() {
                     let mit = (start_height + end_height) / 2;
                     self.output(*down_id, start_width, end_width, mit, end_height);
@@ -217,6 +237,7 @@ impl Screen {
                 }
             }
             Some(Priority::Horizontal) => {
+                // First go to down child
                 let mit = (start_height + end_height) / 2;
                 let down_id: usize = *self.windows[id]
                     .as_ref()
@@ -226,6 +247,7 @@ impl Screen {
                     .unwrap();
                 self.output(down_id, start_width, end_width, mit, end_height);
                 end_height = mit;
+                // If left child exists, output put that one
                 if let Some(left_id) = self.windows[id].as_ref().unwrap().left_child.as_ref() {
                     let mit = (start_width + end_width) / 2;
                     self.output(*left_id, mit, end_width, start_height, end_height);
@@ -235,9 +257,12 @@ impl Screen {
             None => {}
         }
 
+        // TODO keep variable in window that keeps track of available pintable lines
         let buffer_size = self.windows[id].as_ref().unwrap().buffer.iter().count();
 
         let mut it = self.windows[id].as_ref().unwrap().buffer.iter();
+        // Check if all printable lines fit inside the window height size, other wise
+        // move the iterator forward so last inserted line will enter in the output
         if buffer_size > end_height - start_height - 1 {
             it.nth(buffer_size - (end_height - start_height))
                 .unwrap()
@@ -245,13 +270,17 @@ impl Screen {
                 .unwrap();
         }
 
+        // Dump window buffer into screen buffer for output
+        // Default empty line value
         let empty_line = "-- ".to_string();
         for i in start_height..end_height - 1 {
+            // If there is a line, print its content, otherwise, print `empty_line` value
             let line = match it.next() {
                 Some(s) => s.as_ref().unwrap(),
                 None => &empty_line,
             };
             let mut letter = line.chars();
+            // Print letter by letter so content doesnt overflow
             for j in start_width..end_width {
                 if j == end_width - 1 {
                     self.buffer[i][j] = (b' ', self.windows[id].as_ref().unwrap().color)
@@ -267,7 +296,7 @@ impl Screen {
             }
         }
 
-        // Put the name in the lower part
+        // Load name in the lower part
         let name = format!(
             "{} ID: {}",
             self.windows[id].as_ref().unwrap().get_name(),
@@ -285,6 +314,7 @@ impl Screen {
         }
     }
     // Validate existance of window
+    // TODO make it validation for Rc pointer
     fn validate_id(&self, id: usize) -> Result<(), std::io::ErrorKind> {
         // Invalid ID
         if id >= MAX_WIN || self.windows[id].is_none(){
@@ -372,6 +402,7 @@ impl Default for Screen {
         Screen::new()
     }
 }
+
 enum Cmds {
     Print,
     Flush,
@@ -386,14 +417,23 @@ enum Cmds {
 /// `Bridge` is that you can't create new children once you have created the `Bridge`. Run `Bridge::clone(&self)` to
 /// access bridge from multiple threads. Ideally, run `Bridge::kill(&self)`
 /// before ending program to kill the screening process. However, it is not neccessary.
+/// ```ignore
+/// let screen = Screen::new();
+/// let bridge = Bridge::new(screen);
+///
+/// bridge.println(0, "Hello, World");
+/// bridge.print(0, "Hello, multi-window-output");
+/// bridge.flush(0);
+/// brdige.kill();
+/// ```
 pub struct Bridge {
     bridge: std::sync::mpsc::Sender<(Cmds, usize, String)>,
     hash: std::collections::HashSet<usize>,
 }
 
+// Make screen and windows mutable from bridge
 impl Bridge {
-    /// Create a `Bridge` by passing an already created `Screen`. You won't be able to append children
-    /// to `Screen` once passed.
+    /// Create a `Bridge` by passing an already created `Screen`. You won't be able to modify the `Screen` once it's passed.
     pub fn new(screen: Screen) -> Self {
         let (tx, rx) = std::sync::mpsc::channel::<(Cmds, usize, String)>();
         let mut hash: std::collections::HashSet<usize> = std::collections::HashSet::new();
@@ -413,6 +453,7 @@ impl Bridge {
         std::thread::spawn(move || {
             let mut screen = *screen;
             let mut bridge_count = 1;
+            // TODO currently user has to drop Bridge for it to fully terminate
             for msg in rx.iter() {
                 match msg.0 {
                     Cmds::Print => screen.print(msg.1, &msg.2).unwrap(),

@@ -62,4 +62,4 @@ https://user-images.githubusercontent.com/57689554/214165855-e4569f2d-499e-471d-
 
 The plan
 - al entrar por el primero va a ir al derecho y se va a pasar cunatos previos hay,
-- 
+- Only modify size for the ones that directly adyacent to it

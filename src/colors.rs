@@ -36,6 +36,7 @@ pub enum Color {
     LightYellow, Magenta, Red, White, Yellow,
 }
 
+// Map color to background screen
 pub fn color_code(color: &Color) -> &'static str {
     match color {
         Color::Black            => termion::color::Black.bg_str(),

@@ -15,12 +15,17 @@ mod tests {
     }
 }
 
+// Enum to indicate windows partition
 #[derive(Debug)]
 pub enum Priority {
     Vertical,
     Horizontal,
 }
 
+// Windows object
+// Children contain other other window ids
+// TODO Use Rc pointer for children
+// TODO Set values to private (already accesible through methods)
 #[derive(Debug)]
 pub struct Window {
     id: usize,
@@ -32,6 +37,7 @@ pub struct Window {
     pub priority: Option<Priority>,
 }
 
+// TODO allow user to set Window name
 impl Window {
     pub fn new(id: usize) -> Window {
         Window {
